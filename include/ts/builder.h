@@ -12,13 +12,15 @@
 #include "common.h"
 #include "ts.h"
 
+#include "mmap_struct.h"
+
 namespace ts {
 
 // Builds a `TrieSpline`.
 template <class KeyType>
 class Builder {
  public:
-  Builder(KeyType min_key, KeyType max_key, size_t spline_max_error)
+  Builder(KeyType min_key, KeyType max_key, size_t spline_max_error, fs::path root_path)
       : min_key_(min_key),
         max_key_(max_key),
         spline_max_error_(spline_max_error),
@@ -26,7 +28,8 @@ class Builder {
         curr_num_distinct_keys_(0),
         prev_key_(min_key),
         prev_position_(0),
-        chtb_(min_key, max_key) {}
+        chtb_(min_key, max_key),
+        root_path_(root_path) {}
 
   // Adds a key. Assumes that keys are stored in a dense array.
   void AddKey(KeyType key) {
@@ -56,7 +59,7 @@ class Builder {
 
     // And return the read-only instance
     return TrieSpline<KeyType>(min_key_, max_key_, curr_num_keys_, spline_max_error_,
-                               std::move(cht_), std::move(spline_points_));
+                               std::move(cht_), std::move(spline_points_), root_path_);
   }
 
  private:
@@ -492,6 +495,8 @@ class Builder {
 
   // Previous CDF point.
   Coord<KeyType> prev_point_;
+
+  fs::path root_path_;
 };
 
 }  // namespace ts

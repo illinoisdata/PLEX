@@ -8,6 +8,8 @@
 #include "ts_cht/cht.h"
 #include "common.h"
 
+#include "mmap_struct.h"
+
 namespace ts {
 // Approximates a cumulative distribution function (CDF) using spline
 // interpolation.
@@ -16,16 +18,20 @@ class TrieSpline {
  public:
   TrieSpline() = default;
 
+  TrieSpline(fs::path root_path) : root_path_(root_path) {}
+
   TrieSpline(KeyType min_key, KeyType max_key,
              size_t num_keys, size_t spline_max_error,
              ts_cht::CompactHistTree<KeyType> cht,
-             std::vector<ts::Coord<KeyType>> spline_points)
+             std::vector<ts::Coord<KeyType>> spline_points,
+             fs::path root_path)
       : min_key_(min_key),
         max_key_(max_key),
         num_keys_(num_keys),
         spline_max_error_(spline_max_error),
-        spline_points_(std::move(spline_points)),
-        cht_(std::move(cht)) {}
+        spline_points_(std::move(spline_points), root_path / "spline_points"),
+        cht_(std::move(cht)),
+        root_path_(root_path) {}
 
   // Returns the estimated position of `key`.
   double GetEstimatedPosition(const KeyType key) const {
@@ -96,8 +102,44 @@ class TrieSpline {
   size_t num_keys_;
   size_t spline_max_error_;
 
-  std::vector<ts::Coord<KeyType>> spline_points_;
+  mmap_struct::LazyVector<ts::Coord<KeyType>> spline_points_;
   ts_cht::CompactHistTree<KeyType> cht_;
+
+  fs::path root_path_;
+
+
+  fs::path make_spline_points_path() const {
+    return this->root_path_ / "spline_points";
+  }
+
+  /* Serialization */
+
+  friend class boost::serialization::access;
+  template<class Archive>
+  void save(Archive & ar, const unsigned int version __attribute__((unused))) const {
+    // std::cout << "TrieSpline::save" << std::endl;
+    ar << this->min_key_;
+    ar << this->max_key_;
+    ar << this->num_keys_;
+    ar << this->spline_max_error_;
+    ar << this->cht_;
+
+    ar << this->spline_points_.size();  // data_size
+  }
+
+  template<class Archive>
+  void load(Archive & ar, const unsigned int version __attribute__((unused))) {
+    // std::cout << "TrieSpline::load" << std::endl;
+    ar >> this->min_key_;
+    ar >> this->max_key_;
+    ar >> this->num_keys_;
+    ar >> this->spline_max_error_;
+    ar >> this->cht_;
+
+    size_t data_size; ar >> data_size;
+    this->spline_points_ = mmap_struct::LazyVector<ts::Coord<KeyType>>(this->make_spline_points_path(), data_size);
+  }
+  BOOST_SERIALIZATION_SPLIT_MEMBER()
 };
 
 }  // namespace ts

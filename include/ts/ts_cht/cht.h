@@ -8,6 +8,8 @@
 
 #include "common.h"
 
+#include "../mmap_struct.h"
+
 namespace ts_cht {
 
 template <class KeyType>
@@ -84,6 +86,30 @@ class CompactHistTree {
   size_t shift_;
   
   std::vector<unsigned> table_;
+
+
+  /* Serialization */
+
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize(Archive & ar, const unsigned int version __attribute__((unused))) {
+    // std::cout << "In CompactHistTree::serialize" << std::endl;
+    ar & this->single_layer_;
+    ar & this->min_key_;
+    ar & this->max_key_;
+    ar & this->num_keys_;
+    ar & this->num_bins_;
+    ar & this->log_num_bins_;
+    ar & this->max_error_;
+    ar & this->shift_;
+    size_t table_size = this->table_.size();
+    ar & table_size;
+    // std::cout << "table_size= " << table_size << std::endl;
+    this->table_.resize(table_size);
+    for (size_t idx = 0; idx < table_size; ++idx) {
+      ar & this->table_[idx];
+    }
+  }
 };
 
 }  // namespace cht

@@ -5,6 +5,8 @@
 #include "include/ts/builder.h"
 #include "include/ts/common.h"
 
+#include "include/ts/mmap_struct.h"
+
 using namespace std;
 
 void TrieSplineExample() {
@@ -17,7 +19,7 @@ void TrieSplineExample() {
   // Build TS
   uint64_t min = keys.front();
   uint64_t max = keys.back();
-  ts::Builder<uint64_t> tsb(min, max, /*spline_max_error=*/32);
+  ts::Builder<uint64_t> tsb(min, max, /*spline_max_error=*/32, "/tmp/plex_example");
 
   for (const auto& key : keys) tsb.AddKey(key);
   auto ts = tsb.Finalize();
